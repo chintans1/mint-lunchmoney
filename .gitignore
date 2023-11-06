@@ -2,6 +2,7 @@ node_modules/
 build/
 out/
 .env
+untouched/
 
 data.csv
 category_mapping.json
