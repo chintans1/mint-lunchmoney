@@ -1,4 +1,4 @@
-import { MintTransaction } from "./util.js";
+import { MintTransaction } from "./models/mint-transaction";
 import dateFns from "date-fns";
 
 function addExtIds(transactions: MintTransaction[]) {

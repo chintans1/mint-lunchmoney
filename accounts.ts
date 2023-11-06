@@ -1,7 +1,8 @@
 import _ from "underscore";
 import dateFns from "date-fns";
 import { LunchMoney } from "lunch-money";
-import { MintTransaction, readJSONFile } from "./util.js";
+import { readJSONFile } from "./util.js";
+import { MintTransaction } from "./models/mint-transaction";
 
 export async function addLunchMoneyAccountIds(
   transactions: MintTransaction[],

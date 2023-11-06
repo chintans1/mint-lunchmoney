@@ -1,4 +1,5 @@
-import { MintTransaction, prettyJSON, readJSONFile } from "./util.js";
+import { prettyJSON, readJSONFile } from "./util.js";
+import { MintTransaction } from "./models/mint-transaction";
 import stringSimilarity from "string-similarity";
 import { LunchMoney } from "lunch-money";
 import _ from "underscore";
