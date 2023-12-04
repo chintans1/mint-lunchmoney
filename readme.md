@@ -51,6 +51,8 @@ You can use this file to archive specific accounts that are still being reported
   ]
 }
 ```
+# TODO progress
+- create category logic is almost finished, try it out with properly mapped category mappings
 
 # TODO
 

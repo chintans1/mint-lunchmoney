@@ -1,6 +1,6 @@
 import papaparse from "papaparse";
 import fs from "fs";
-import { MintTransaction } from "./models/mint-transaction";
+import { MintTransaction } from "./models/mintTransaction";
 
 export const readJSONFile = (path: string): any | null => {
   if (fs.existsSync(path)) {
@@ -22,8 +22,10 @@ export const readCSV = async (filePath: string): Promise<MintTransaction[]> => {
       // 'Original Description' => 'OriginalDescription'
       transformHeader: (header: string) => header.replace(/\s/g, ""),
       complete: (results) => {
-        resolve(results.data);
+        console.log("read data");
+        return resolve(results.data);
       },
+
     } as papaparse.ParseConfig<MintTransaction>);
   });
 };
@@ -35,4 +37,9 @@ export const writeCSV = (csvRows: any, filePath: string) => {
 
 export function prettyJSON(json: Object, returnString = false): string {
   return JSON.stringify(json, null, 2);
+}
+
+export function parseBoolean(userInput: String): boolean {
+  userInput = userInput.trim();
+  return userInput === "y" || userInput === "Y";
 }

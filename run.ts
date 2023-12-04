@@ -1,7 +1,7 @@
 // github:lunch-money/lunch-money-js
 
 import { LunchMoney, DraftTransaction } from "lunch-money";
-import { readCSV, writeCSV } from "./util.js";
+import { readCSV, writeCSV, parseBoolean } from "./util.js";
 import {
   transformAccountCategories,
   addLunchMoneyCategoryIds,
@@ -16,6 +16,50 @@ import { applyStandardTransformations } from "./transformations.js";
 import dotenv from "dotenv";
 import humanInterval from "human-interval";
 import dateFns from "date-fns";
+import { MintTransaction } from "./models/mintTransaction.js";
+
+export async function getTransactionsWithMappedCategories(
+  mintTransactions: MintTransaction[],
+  lunchMoneyClient: LunchMoney
+) {
+  console.log("Read transactions %d", mintTransactions.length);
+
+  const startImportDate = determineStartImportDate();
+
+  const mintTransactionsWithArchiveAccount = useArchiveForOldAccounts(
+    mintTransactions,
+    startImportDate,
+    "./account_mapping.json"
+  );
+
+  const mintTransactionsWithTransformedCategories =
+    await transformAccountCategories(
+      mintTransactionsWithArchiveAccount,
+      lunchMoneyClient,
+      "./category_mapping.json"
+    );
+
+  return mintTransactionsWithTransformedCategories;
+}
+
+export function determineStartImportDate() {
+  // TODO this should be an input parameter to the script
+  // TODO this isn't really the import date, this is only used to determine when transactions should be treated as old
+  let range = humanInterval("1 year");
+
+  if (!range) {
+    console.log("Invalid date to search for active accounts");
+    process.exit(1);
+  }
+
+  // range is in milliseconds
+  range /= 1000;
+
+  const oneYearAgo = dateFns.subSeconds(new Date(), range);
+
+  return oneYearAgo;
+}
+
 
 (async () => {
   dotenv.config();
@@ -26,41 +70,17 @@ import dateFns from "date-fns";
   }
 
   const mintTransactions = await readCSV("./data.csv");
-
-  // TODO this should be an input parameter to the script
-  // TODO this isn't really the import date, this is only used to determine when transactions should be treated as old
-  function determineStartImportDate() {
-    let range = humanInterval("1 year");
-
-    if (!range) {
-      console.log("Invalid date to search for active accounts");
-      process.exit(1);
-    }
-
-    // range is in milliseconds
-    range /= 1000;
-
-    const oneYearAgo = dateFns.subSeconds(new Date(), range);
-
-    return oneYearAgo;
-  }
-
-  const startImportDate = determineStartImportDate();
-
-  const mintTransactionsWithArchiveAccount = useArchiveForOldAccounts(
-    mintTransactions,
-    startImportDate,
-    "./account_mapping.json"
-  );
-
   const lunchMoney = new LunchMoney({ token: process.env.LUNCH_MONEY_API_KEY });
 
+  // if cmd args are for generating cat_mapping only
+  if (process.argv[2] === "category-mapping") {
+    console.log("category mapping only");
+    await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
+    process.exit(0);
+  }
+
   const mintTransactionsWithTransformedCategories =
-    await transformAccountCategories(
-      mintTransactionsWithArchiveAccount,
-      lunchMoney,
-      "./category_mapping.json"
-    );
+    await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
 
   await createLunchMoneyCategories(
     mintTransactionsWithTransformedCategories,
@@ -89,6 +109,7 @@ import dateFns from "date-fns";
   // TODO some unknowns about the API that we are guessing on right now:
   //    - https://github.com/lunch-money/developers/issues/11
   //    - https://github.com/lunch-money/developers/issues/10
+
 
   const BATCH_SIZE = 100;
 

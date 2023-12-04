@@ -1,4 +1,4 @@
-import { MintTransaction } from "./models/mint-transaction";
+import { MintTransaction } from "./models/mintTransaction";
 import dateFns from "date-fns";
 
 function addExtIds(transactions: MintTransaction[]) {
@@ -15,7 +15,7 @@ function addExtIds(transactions: MintTransaction[]) {
 function addMintTag(transactions: MintTransaction[]) {
   for (const transaction of transactions) {
     transaction.LunchMoneyTags = [
-      ...(transaction.LunchMoneyTags || []),
+      ...transaction.LunchMoneyTags,
       "mint",
     ];
   }

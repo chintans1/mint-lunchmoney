@@ -1,8 +1,9 @@
 import _ from "underscore";
 import dateFns from "date-fns";
-import { LunchMoney } from "lunch-money";
+import { LunchMoney, Asset } from "lunch-money";
 import { readJSONFile } from "./util.js";
-import { MintTransaction } from "./models/mint-transaction";
+import { MintTransaction } from "./models/mintTransaction.js";
+import { createAsset } from "./clients/lunchMoneyClient.js";
 
 export async function addLunchMoneyAccountIds(
   transactions: MintTransaction[],
@@ -50,8 +51,11 @@ export async function createLunchMoneyAccounts(
     existingAccountNames
   );
 
-  // TODO right now LM does not allow you to create accounts programmatically
-  // https://feedback.lunchmoney.app/developer-api/p/create-asset-api
+  accountsToCreate.forEach(account => {
+    console.log(`trying to create account ${account}`);
+    createAsset(lunchMoneyClient, account)
+  });
+
   if (!_.isEmpty(accountsToCreate)) {
     console.log(`Create these accounts:\n\n${accountsToCreate.join("\n")}`);
     process.exit(1);
@@ -97,7 +101,7 @@ export function useArchiveForOldAccounts(
   );
 
   const userSpecifiedArchiveAccounts =
-    readJSONFile(transactionMappingPath)?.archive || [];
+    readJSONFile(transactionMappingPath) || [];
 
   const accountsToArchive = allInactiveMintAccounts.concat(
     userSpecifiedArchiveAccounts

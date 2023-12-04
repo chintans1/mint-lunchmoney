@@ -1,11 +1,18 @@
-import { prettyJSON, readJSONFile } from "./util.js";
-import { MintTransaction } from "./models/mint-transaction";
+import { prettyJSON, readJSONFile, parseBoolean } from "./util.js";
+import { MintTransaction } from "./models/mintTransaction.js";
 import stringSimilarity from "string-similarity";
 import { LunchMoney } from "lunch-money";
 import _ from "underscore";
 import fs from "fs";
+import promptSync from "prompt-sync";
 
-type LunchMoneyOutput = { category: string; tags?: string[] } | string;
+type LunchMoneyOutput = {
+  category: string;
+  tags?: string[];
+  income: boolean;
+  excludeFromBudget: boolean;
+  excludeFromTotals: boolean;
+};
 
 interface CategoryMapping {
   [mintCategoryName: string]: LunchMoneyOutput;
@@ -59,11 +66,18 @@ export async function transformAccountCategories(
     //   target:'Business Expenses'
     // }
     .map((mintCategoryName: string) => {
-      return {
-        [mintCategoryName]: stringSimilarity.findBestMatch(
-          mintCategoryName,
-          lunchMoneyCategories
-        ).bestMatch.target,
+      return _.isEmpty(lunchMoneyCategories)
+      ? {
+        [mintCategoryName]: {
+          category: mintCategoryName,
+          tags: {}
+        }
+      } :
+      {
+        [mintCategoryName]: {
+          category: stringSimilarity.findBestMatch(mintCategoryName, lunchMoneyCategories).bestMatch.target,
+          tags: {}
+        }
       };
     })
     // merge array of objects into one object
@@ -95,23 +109,7 @@ export async function transformAccountCategories(
     }
   }
 
-  // TODO we are mutating the array here, we should use a copy
-  for (const transaction of transactions) {
-    if (transaction.Category in userCategoryMapping) {
-      transaction.Notes += `\n\nOriginal Mint category: ${transaction.Category}`;
-      const outputMapping = userCategoryMapping[transaction.Category];
-      if (typeof outputMapping === "string") {
-        transaction.LunchMoneyCategoryName = outputMapping;
-      } else {
-        transaction.LunchMoneyCategoryName = outputMapping.category;
-        transaction.LunchMoneyTags = outputMapping.tags || [];
-      }
-    } else {
-      transaction.LunchMoneyCategoryName = transaction.Category;
-    }
-  }
-
-  return transactions;
+  return updateMintTransactionsWithOldNewCategoryInfo(transactions, userCategoryMapping);
 }
 
 export async function addLunchMoneyCategoryIds(
@@ -142,6 +140,15 @@ export async function createLunchMoneyCategories(
   transactions: MintTransaction[],
   lunchMoneyClient: LunchMoney
 ) {
+  const prompt = promptSync();
+  const createCategories = parseBoolean(prompt("Do you want to create categories (y/n): "));
+  if (!createCategories) {
+    console.log("No categories are being created, exiting...");
+    process.exit(1);
+  }
+
+  const categoryMappings: CategoryMapping = readJSONFile("./category_mapping.json")["categories"];
+
   const uniqueCategories = _.chain(transactions)
     .map((t) => t.LunchMoneyCategoryName)
     .uniq()
@@ -171,12 +178,36 @@ export async function createLunchMoneyCategories(
   }
 
   const categoriesToCreate = _.difference(uniqueCategories, lmCategoryNames);
+  categoriesToCreate
+    .map(categoryName => {
+      console.log(`category mapping for ${categoryName} is ${JSON.stringify(categoryMappings[categoryName])}`);
+      return categoryMappings[categoryName] || categoryName;
+    })
+    .forEach(lmCategory => {
+      lunchMoneyClient.createCategory(lmCategory.category || lmCategory.toString(), "N/A", lmCategory.income || false, lmCategory.excludeFromBudget || false, lmCategory.excludeFromTotals || false);
+    });
+}
 
-  // TODO I thought LM didn't allow programmatic category creation, but it does
-  // we should create these categories automatically for users
+const updateMintTransactionsWithOldNewCategoryInfo = function(
+  mintTransactions: MintTransaction[],
+  userCategoryMappings: CategoryMapping
+) {
+  return mintTransactions.map(ogTransaction => {
+    const transaction = Object.assign(ogTransaction);
 
-  if (!_.isEmpty(categoriesToCreate)) {
-    console.log(`Create these categories:\n\n${categoriesToCreate.join("\n")}`);
-    process.exit(1);
-  }
+    if (transaction.Category in userCategoryMappings) {
+      transaction.Notes += `\n\nOriginal Mint category: ${transaction.Category}`;
+      const outputMapping = userCategoryMappings[transaction.Category];
+      if (typeof outputMapping === "string") {
+        transaction.LunchMoneyCategoryName = outputMapping;
+      } else {
+        transaction.LunchMoneyCategoryName = outputMapping.category;
+        transaction.LunchMoneyTags = outputMapping.tags || ["uncategorized"];
+      }
+    } else {
+      transaction.LunchMoneyCategoryName = transaction.Category;
+    }
+
+    return transaction;
+  });
 }
