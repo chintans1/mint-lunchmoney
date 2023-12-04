@@ -1,7 +1,7 @@
 // github:lunch-money/lunch-money-js
 
 import { LunchMoney, DraftTransaction } from "lunch-money";
-import { readCSV, writeCSV, parseBoolean } from "./util.js";
+import { prettyJSON, readCSV, writeCSV, readJSONFile } from "./util.js";
 import {
   transformAccountCategories,
   addLunchMoneyCategoryIds,
@@ -17,8 +17,17 @@ import dotenv from "dotenv";
 import humanInterval from "human-interval";
 import dateFns from "date-fns";
 import { MintTransaction } from "./models/mintTransaction.js";
+import fs from "fs";
 
-export async function getTransactionsWithMappedCategories(
+type LunchMoneyAccount = {
+  name: string;
+  type: "employee compensation" | "cash" | "vehicle" | "loan" | "cryptocurrency" | "investment" | "other" | "credit" | "real estate";
+  balance: number;
+  institutionName: string;
+  currency: string;
+};
+
+const getTransactionsWithMappedCategories = async function(
   mintTransactions: MintTransaction[],
   lunchMoneyClient: LunchMoney
 ) {
@@ -60,6 +69,77 @@ export function determineStartImportDate() {
   return oneYearAgo;
 }
 
+export async function getAndSaveAccountMappings(
+  mintTransactions: MintTransaction[]
+) {
+  // Look at all transactions to fetch the account
+  // Now you can map mint account name -> possible LM account
+  // Possible LM account = {name, institution name, type, currency, balance}
+  const accountMappings = new Map<string, LunchMoneyAccount>();
+
+  console.log(`unique accounts: ${new Set(mintTransactions.map(transaction => transaction.AccountName)).size}`);
+
+  [...new Set(mintTransactions.map(transaction => transaction.AccountName))]
+    .forEach(accountName => accountMappings.set(accountName, {
+      name: accountName,
+      type: "cash",
+      balance: 0.00,
+      institutionName: "InstitutionName",
+      currency: "USD"
+    }));
+
+  // Go through transactions again and update the balance
+  mintTransactions.forEach(transaction => {
+    const amount = parseFloat(transaction.Amount);
+    if (accountMappings.has(transaction.AccountName)) {
+      const lmAccount: LunchMoneyAccount = accountMappings.get(transaction.AccountName)!;
+      lmAccount.balance = transaction.TransactionType === "credit" ? lmAccount.balance + amount : lmAccount.balance - amount;
+    }
+  });
+
+  console.log(accountMappings);
+
+  console.log(
+    `A account_mapping_raw.json has been created to map ${
+      accountMappings.size
+    } accounts to lunch money:\n`
+  );
+
+  fs.writeFileSync(
+    "./account_mapping_raw.json",
+    prettyJSON({
+      accounts: [...accountMappings],
+    }),
+    "utf8"
+  );
+
+  return accountMappings;
+}
+
+export function createAccountsFromAccountMappings(
+  accountMappings: Map<string, LunchMoneyAccount>,
+  lunchMoney: LunchMoney
+) {
+  accountMappings.forEach((lmAccount, mintAccountName) => {
+    console.log(`trying to create account ${lmAccount.currency.toLowerCase()} for mint account ${mintAccountName}`);
+
+    let resp;
+    const response = lunchMoney.post("/v1/assets", {
+      "name": lmAccount.name,
+      "type_name": lmAccount.type,
+      "balance": lmAccount.balance,
+      "currency": lmAccount.currency.toLowerCase(),
+      "institution_name": lmAccount.institutionName
+    })
+      .then(succ => {
+        resp = succ;
+        console.log(succ);
+      })
+      .catch(fail => console.log(fail));
+
+    console.log(`resp: ${resp} and response ${response}`);
+  });
+}
 
 (async () => {
   dotenv.config();
@@ -76,6 +156,21 @@ export function determineStartImportDate() {
   if (process.argv[2] === "category-mapping") {
     console.log("category mapping only");
     await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
+    process.exit(0);
+  }
+
+  if (process.argv[2] === "account-mapping") {
+    console.log("account mapping only");
+    await getAndSaveAccountMappings(mintTransactions);
+    process.exit(0);
+  }
+
+  if (process.argv[2] === "create-account") {
+    console.log("create accounts");
+    // read from account_mapping.json
+    const accountMappings: Map<string, LunchMoneyAccount> = new Map(readJSONFile("./account_mapping.json")?.accounts);
+    console.log(`did i read mappings correctly: ${accountMappings.size}`);
+    createAccountsFromAccountMappings(accountMappings, lunchMoney);
     process.exit(0);
   }
 

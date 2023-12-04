@@ -51,15 +51,17 @@ You can use this file to archive specific accounts that are still being reported
   ]
 }
 ```
-# TODO progress
-- create category logic is almost finished, try it out with properly mapped category mappings
 
 # TODO
+- [ ] Establish account mapping (Mint -> new Lunch Money account)
+- [ ] Allow transactions to be marked as different currency based on account settings
+- [ ] Import all transactions
+- [ ] Net worth data importing
+
 
 This is not complete, but should work for someone who wants to import their Mint transactions quickly.
 
 Some things that would be great to fix:
-
 - [ ] Cash & Uncategorized accounts are not handled properly
 - [ ] provide confirmation prompt before importing transactions
 - [ ] input paths are hardcoded, these should be CLI arguments
