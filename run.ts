@@ -117,28 +117,18 @@ export async function getAndSaveAccountMappings(
 }
 
 export function createAccountsFromAccountMappings(
-  accountMappings: Map<string, LunchMoneyAccount>,
+  mintAccountName: string,
+  lmAccount: LunchMoneyAccount,
   lunchMoney: LunchMoney
 ) {
-  accountMappings.forEach((lmAccount, mintAccountName) => {
     console.log(`trying to create account ${lmAccount.currency.toLowerCase()} for mint account ${mintAccountName}`);
-
-    let resp;
-    const response = lunchMoney.post("/v1/assets", {
+    return lunchMoney.post("/v1/assets", {
       "name": lmAccount.name,
       "type_name": lmAccount.type,
       "balance": lmAccount.balance,
       "currency": lmAccount.currency.toLowerCase(),
       "institution_name": lmAccount.institutionName
-    })
-      .then(succ => {
-        resp = succ;
-        console.log(succ);
-      })
-      .catch(fail => console.log(fail));
-
-    console.log(`resp: ${resp} and response ${response}`);
-  });
+    });
 }
 
 (async () => {
@@ -170,7 +160,10 @@ export function createAccountsFromAccountMappings(
     // read from account_mapping.json
     const accountMappings: Map<string, LunchMoneyAccount> = new Map(readJSONFile("./account_mapping.json")?.accounts);
     console.log(`did i read mappings correctly: ${accountMappings.size}`);
-    createAccountsFromAccountMappings(accountMappings, lunchMoney);
+    for (const [key, value] of accountMappings) {
+      const response = await createAccountsFromAccountMappings(key, value, lunchMoney);
+      console.log(`account created ${key}/${value.name}: ${response}`)
+    }
     process.exit(0);
   }
 
