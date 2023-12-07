@@ -1,8 +1,9 @@
 import _ from "underscore";
 import dateFns from "date-fns";
 import { LunchMoney, Asset } from "lunch-money";
-import { readJSONFile } from "./util.js";
+import { readJSONFile, prettyJSON } from "./util.js";
 import { MintTransaction } from "./models/mintTransaction.js";
+import { LunchMoneyAccount } from "./models/lunchMoneyAccount.js";
 import { createAsset } from "./clients/lunchMoneyClient.js";
 
 export async function addLunchMoneyAccountIds(
@@ -62,11 +63,42 @@ export async function createLunchMoneyAccounts(
   }
 }
 
+export function updateTransactionsWithAccountMappings(
+  transactions: MintTransaction[],
+  accountMappings: Map<string, LunchMoneyAccount>,
+  oldTransactionDate: Date
+): MintTransaction[] {
+  const [oldTransactions, recentTransactions] = _.partition(transactions,
+    t => dateFns.isBefore(dateFns.parse(t.Date, "MM/dd/yyyy", new Date()), oldTransactionDate));
+
+  const allInactiveMintAccounts = _.chain(oldTransactions)
+    .map(t => t.AccountName)
+    .compact()
+    .uniq()
+    .value();
+  console.log(`Determined these Mint Accounts to be old and probably should be archived:\n\n ${allInactiveMintAccounts.join("\n")}`);
+  console.log(`Will save these inactive accounts to inactive_accounts.json, feel free to mark it inactive in LunchMoney`);
+
+  const accountsToSkip = ["Uncategorized"];
+
+  for (const transaction of transactions) {
+    if (accountsToSkip.includes(transaction.AccountName)) {
+      console.log(`This transaction is uncategorized/cash: ${prettyJSON(transaction)}`);
+      // transaction.LunchMoneyAccountName = transaction.AccountName;
+    }
+
+    transaction.Notes += `\n\n Original Mint account: ${transaction.AccountName}`;
+    transaction.LunchMoneyAccountName = `${accountMappings.get(transaction.AccountName)?.name || "Could not find mapping"}`;
+  }
+
+  return transactions;
+}
+
 export function useArchiveForOldAccounts(
   transactions: MintTransaction[],
   // the date at which you want to treat transactions as old
   oldTransactionDate: Date,
-  transactionMappingPath: string
+  accountMappingPath: string
 ): MintTransaction[] {
   const [oldTransactions, recentTransactions] = _.partition(transactions, (t) =>
     dateFns.isBefore(

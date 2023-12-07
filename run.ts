@@ -1,14 +1,14 @@
 // github:lunch-money/lunch-money-js
 
 import { LunchMoney, DraftTransaction } from "lunch-money";
-import { prettyJSON, readCSV, writeCSV, readJSONFile } from "./util.js";
+import { prettyJSON, readCSV, writeCSV, readJSONFile, parseBoolean } from "./util.js";
 import {
   transformAccountCategories,
   addLunchMoneyCategoryIds,
   createLunchMoneyCategories,
 } from "./categories.js";
 import {
-  useArchiveForOldAccounts,
+  updateTransactionsWithAccountMappings,
   addLunchMoneyAccountIds,
   createLunchMoneyAccounts,
 } from "./accounts.js";
@@ -17,15 +17,9 @@ import dotenv from "dotenv";
 import humanInterval from "human-interval";
 import dateFns from "date-fns";
 import { MintTransaction } from "./models/mintTransaction.js";
+import { LunchMoneyAccount } from "./models/lunchMoneyAccount.js";
 import fs from "fs";
-
-type LunchMoneyAccount = {
-  name: string;
-  type: "employee compensation" | "cash" | "vehicle" | "loan" | "cryptocurrency" | "investment" | "other" | "credit" | "real estate";
-  balance: number;
-  institutionName: string;
-  currency: string;
-};
+import PromptSync from "prompt-sync";
 
 const getTransactionsWithMappedCategories = async function(
   mintTransactions: MintTransaction[],
@@ -35,15 +29,16 @@ const getTransactionsWithMappedCategories = async function(
 
   const startImportDate = determineStartImportDate();
 
-  const mintTransactionsWithArchiveAccount = useArchiveForOldAccounts(
-    mintTransactions,
-    startImportDate,
-    "./account_mapping.json"
+  const accountMappings: Map<string, LunchMoneyAccount> =
+      new Map(readJSONFile("./account_mapping.json")?.accounts);
+
+  const mintTransactionsWithAccountMappings = updateTransactionsWithAccountMappings(
+    mintTransactions, accountMappings, startImportDate
   );
 
   const mintTransactionsWithTransformedCategories =
     await transformAccountCategories(
-      mintTransactionsWithArchiveAccount,
+      mintTransactionsWithAccountMappings,
       lunchMoneyClient,
       "./category_mapping.json"
     );
@@ -97,8 +92,6 @@ export async function getAndSaveAccountMappings(
     }
   });
 
-  console.log(accountMappings);
-
   console.log(
     `A account_mapping_raw.json has been created to map ${
       accountMappings.size
@@ -113,10 +106,11 @@ export async function getAndSaveAccountMappings(
     "utf8"
   );
 
+  console.log("Make sure to update account_mapping_raw.json to account_mapping.json");
   return accountMappings;
 }
 
-export function createAccountsFromAccountMappings(
+export function createAccount(
   mintAccountName: string,
   lmAccount: LunchMoneyAccount,
   lunchMoney: LunchMoney
@@ -138,35 +132,37 @@ export function createAccountsFromAccountMappings(
     console.error("Lunch Money API key not set");
     process.exit(1);
   }
+  const lunchMoney = new LunchMoney({ token: process.env.LUNCH_MONEY_API_KEY });
+  const prompt = PromptSync();
 
   const mintTransactions = await readCSV("./data.csv");
-  const lunchMoney = new LunchMoney({ token: process.env.LUNCH_MONEY_API_KEY });
 
-  // if cmd args are for generating cat_mapping only
   if (process.argv[2] === "category-mapping") {
-    console.log("category mapping only");
+    console.log("Generating category mappings...");
     await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
     process.exit(0);
   }
 
   if (process.argv[2] === "account-mapping") {
-    console.log("account mapping only");
+    console.log("Generating account mappings...");
     await getAndSaveAccountMappings(mintTransactions);
     process.exit(0);
   }
 
   if (process.argv[2] === "create-account") {
-    console.log("create accounts");
-    // read from account_mapping.json
-    const accountMappings: Map<string, LunchMoneyAccount> = new Map(readJSONFile("./account_mapping.json")?.accounts);
-    console.log(`did i read mappings correctly: ${accountMappings.size}`);
+    console.log("Creating accounts...");
+    const accountMappings: Map<string, LunchMoneyAccount> =
+      new Map(readJSONFile("./account_mapping.json")?.accounts);
     for (const [key, value] of accountMappings) {
-      const response = await createAccountsFromAccountMappings(key, value, lunchMoney);
-      console.log(`account created ${key}/${value.name}: ${response}`)
+      const response = await createAccount(key, value, lunchMoney);
+      console.log(`Account created ${key}/${value.name}: ${prettyJSON(response)}`)
     }
     process.exit(0);
   }
 
+  // No command line arguments are given
+  // We want to take all mint transactions, apply the category mappings and account mappings
+  // After that, we can upload the transactions (ensuring accounts and categories are created)
   const mintTransactionsWithTransformedCategories =
     await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
 
@@ -191,15 +187,16 @@ export function createAccountsFromAccountMappings(
 
   writeCSV(mintTransactionsWithLunchMoneyIds, "./data_transformed.csv");
 
-  // TODO should confirm the user actually wants to send everything to LM
-  // TODO we should extract this out into a separate function
-  // TODO unsure if we can increase the batch size
-  // TODO some unknowns about the API that we are guessing on right now:
-  //    - https://github.com/lunch-money/developers/issues/11
-  //    - https://github.com/lunch-money/developers/issues/10
+  console.log("Look at the data_transformed.csv file and ensure everything looks correct.");
+  const shouldContinue: boolean = parseBoolean(prompt("If it looks correct, we can proceed. Does it look correct (y/n): "));
+
+  if (!shouldContinue) {
+    console.log("Exiting...");
+    process.exit(0);
+  }
 
 
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 50;
 
   console.log(
     `Pushing ${mintTransactionsWithLunchMoneyIds.length} transactions to LunchMoney`
