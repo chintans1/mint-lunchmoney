@@ -52,7 +52,6 @@ You can use this file to archive specific accounts that are still being reported
 }
 ```
 
-# TODO
 - [ ] Establish account mapping (Mint -> new Lunch Money account)
 - [ ] Allow transactions to be marked as different currency based on account settings
 - [ ] Import all transactions

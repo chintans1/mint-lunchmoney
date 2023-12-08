@@ -18,6 +18,7 @@ interface CategoryMapping {
   [mintCategoryName: string]: LunchMoneyOutput;
 }
 
+// Creates category mappings / updates all transactions to store the best possible LM category
 export async function transformAccountCategories(
   transactions: MintTransaction[],
   lunchMoneyClient: LunchMoney,
@@ -126,7 +127,7 @@ export async function addLunchMoneyCategoryIds(
 
   for (const transaction of transactions) {
     if (transaction.LunchMoneyCategoryName === "Uncategorized") {
-      continue;
+      console.log(`Transaction ${transaction.Description} from ${transaction.Date} is uncategorized`);
     }
 
     transaction.LunchMoneyCategoryId =

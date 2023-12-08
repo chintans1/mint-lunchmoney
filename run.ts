@@ -25,7 +25,7 @@ const getTransactionsWithMappedCategories = async function(
   mintTransactions: MintTransaction[],
   lunchMoneyClient: LunchMoney
 ) {
-  console.log("Read transactions %d", mintTransactions.length);
+  console.log("Read %d transactions", mintTransactions.length);
 
   const startImportDate = determineStartImportDate();
 
@@ -195,7 +195,6 @@ export function createAccount(
     process.exit(0);
   }
 
-
   const BATCH_SIZE = 50;
 
   console.log(
@@ -235,20 +234,17 @@ export function createAccount(
           external_id: transaction.LunchMoneyExtId,
           tags: transaction.LunchMoneyTags,
 
-          currency: "usd",
+          currency: transaction.LunchMoneyCurrency,
           status: "cleared",
         } as DraftTransaction)
     );
 
     const result = await lunchMoney.createTransactions(
       formattedTransactions,
-
       // don't apply rules, user can apply manually
       false,
-
       // check for recurring expenses
       true,
-
       // treat negative amounts as debit
       true
     );

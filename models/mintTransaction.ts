@@ -30,4 +30,5 @@ export interface MintTransaction {
   LunchMoneyExtId: string;
   LunchMoneyAmount: string;
   LunchMoneyDate: string;
+  LunchMoneyCurrency: string;
 }

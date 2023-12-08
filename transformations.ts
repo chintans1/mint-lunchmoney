@@ -1,4 +1,6 @@
+import PromptSync from "prompt-sync";
 import { MintTransaction } from "./models/mintTransaction";
+import { parseBoolean } from "./util";
 import dateFns from "date-fns";
 
 function addExtIds(transactions: MintTransaction[]) {
@@ -60,7 +62,9 @@ function transformDates(transactions: MintTransaction[]) {
 }
 
 export function applyStandardTransformations(transactions: MintTransaction[]) {
-  return addExtIds(
-    addMintTag(trimNotes(flipSigns(transformDates(transactions))))
-  );
+  const prompt = PromptSync();
+  const addMintTags: Boolean = parseBoolean(prompt(`Do you want to add a "Mint" tag to all transactions (y/n): `));
+
+  const transformedTransactions = addExtIds(trimNotes(flipSigns(transformDates(transactions))));
+  return addMintTags ? addMintTag(transformedTransactions) : transformedTransactions;
 }
