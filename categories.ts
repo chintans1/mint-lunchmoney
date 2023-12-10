@@ -150,19 +150,23 @@ export async function createLunchMoneyCategories(
 
   const categoryMappings: CategoryMapping = readJSONFile("./category_mapping.json")["categories"];
 
+  const uniqueMintCategories = _.chain(transactions)
+    .map(t => t.Category)
+    .uniq()
+    .value();
+
   const uniqueCategories = _.chain(transactions)
-    .map((t) => t.LunchMoneyCategoryName)
+    .map(t => t.LunchMoneyCategoryName)
     .uniq()
     .value();
 
   const rawLunchMoneyCategories = await lunchMoneyClient.getCategories();
   const lmCategoryGroupNames = rawLunchMoneyCategories
-    .filter((c) => c.is_group)
-    .map((c) => c.name);
-
+    .filter(c => c.is_group)
+    .map(c => c.name);
   const lmCategoryNames = rawLunchMoneyCategories
-    .filter((c) => !c.is_group)
-    .map((c) => c.name);
+    .filter(c => !c.is_group)
+    .map(c => c.name);
 
   // this category maps to no category
   lmCategoryNames.push("Uncategorized");
@@ -179,11 +183,13 @@ export async function createLunchMoneyCategories(
   }
 
   const categoriesToCreate = _.difference(uniqueCategories, lmCategoryNames);
-  categoriesToCreate
-    .map(categoryName => {
-      console.log(`category mapping for ${categoryName} is ${JSON.stringify(categoryMappings[categoryName])}`);
-      return categoryMappings[categoryName] || categoryName;
+
+  uniqueMintCategories
+    .map(mintCategory => {
+      console.log(`category mapping for ${mintCategory} is ${JSON.stringify(categoryMappings[mintCategory])}`);
+      return categoryMappings[mintCategory] || mintCategory;
     })
+    .filter(lmCategory => categoriesToCreate.includes(lmCategory.category))
     .forEach(lmCategory => {
       lunchMoneyClient.createCategory(lmCategory.category || lmCategory.toString(), "N/A", lmCategory.income || false, lmCategory.excludeFromBudget || false, lmCategory.excludeFromTotals || false);
     });
