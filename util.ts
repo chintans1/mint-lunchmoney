@@ -22,7 +22,6 @@ export const readCSV = async (filePath: string): Promise<MintTransaction[]> => {
       // 'Original Description' => 'OriginalDescription'
       transformHeader: (header: string) => header.replace(/\s/g, ""),
       complete: (results) => {
-        console.log("read data");
         return resolve(results.data);
       },
 

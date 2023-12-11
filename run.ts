@@ -6,6 +6,7 @@ import {
   transformAccountCategories,
   addLunchMoneyCategoryIds,
   createLunchMoneyCategories,
+  generateCategoryMappings
 } from "./categories.js";
 import {
   updateTransactionsWithAccountMappings,
@@ -72,7 +73,7 @@ export async function getAndSaveAccountMappings(
   // Possible LM account = {name, institution name, type, currency, balance}
   const accountMappings = new Map<string, LunchMoneyAccount>();
 
-  console.log(`unique accounts: ${new Set(mintTransactions.map(transaction => transaction.AccountName)).size}`);
+  console.log(`Found ${new Set(mintTransactions.map(transaction => transaction.AccountName)).size} unique accounts`);
 
   [...new Set(mintTransactions.map(transaction => transaction.AccountName))]
     .forEach(accountName => accountMappings.set(accountName, {
@@ -115,7 +116,7 @@ export function createAccount(
   lmAccount: LunchMoneyAccount,
   lunchMoney: LunchMoney
 ) {
-    console.log(`trying to create account ${lmAccount.currency.toLowerCase()} for mint account ${mintAccountName}`);
+    console.log(`Trying to create account ${lmAccount.name} for mint account ${mintAccountName}`);
     return lunchMoney.post("/v1/assets", {
       "name": lmAccount.name,
       "type_name": lmAccount.type,
@@ -139,7 +140,7 @@ export function createAccount(
 
   if (process.argv[2] === "category-mapping") {
     console.log("Generating category mappings...");
-    await getTransactionsWithMappedCategories(mintTransactions, lunchMoney);
+    await generateCategoryMappings(mintTransactions, lunchMoney);
     process.exit(0);
   }
 
@@ -154,8 +155,7 @@ export function createAccount(
     const accountMappings: Map<string, LunchMoneyAccount> =
       new Map(readJSONFile("./account_mapping.json")?.accounts);
     for (const [key, value] of accountMappings) {
-      const response = await createAccount(key, value, lunchMoney);
-      console.log(`Account created ${key}/${value.name}: ${prettyJSON(response)}`)
+      await createAccount(key, value, lunchMoney);
     }
     process.exit(0);
   }

@@ -1,20 +1,22 @@
 # Import Mint Transactions Into LunchMoney
+### Forked from https://github.com/iloveitaly/mint-lunchmoney
 
-[LunchMoney](https://mikebian.co/lunchmoney) is a indie-developed replacement for Mint. Mint has died on the vine post-acquisition, and after it stopped updating my primary bank account, I decided I was going to move off to another system. I've tried personal capital and, just like Mint, it got acquired and seems like it died.
-
-I decided on LunchMoney because of it's awesome API, the fact that it's a paid app, and it's being developed by an indie developer (which, hopefully, means it will get new features and has less of a chance of getting acquired).
+[LunchMoney](https://lunchmoney.app) is a indie-developed replacement for Mint. Mint has died in favour of Credit Karma.
 
 Unfortunately, I had years of transactions in Mint and did not want to lose all of that historical data. This script imports Mint transactions into LunchMoney, preserving as much of the original data as possible.
 
-The primary reason I went through all of this trouble is to learn TypeScript. I always enjoy finding a 'learning project' that provides *just* enough motivation to push through the frustration in learning a new language. Please excuse any beginner TS (and submit a PR!).
+Feel free to open a PR to fix anything or add any new functionality. I am not the best at TypeScript so there is probably a lot of room for improvement.
 
 ## What does this do?
 
 * Date, amount, etc transformation to match LunchMoney's expected format
-* All imported transactions include a 'mint' tag
+* All imported transactions can include a 'mint' tag
 * All imported transactions will include a 'MINT-{row-number}` external ID. For this reason, you should only import your mint transactions from a single file
-* All accounts without activity in the last ~year *or* intentionally marked as an inactive account
-* Ability to specify a mapping between Mint<>LunchMoney for accounts that don't match
+
+* Ability to specify a category mapping between Mint <> LunchMoney
+  * Ability to tag all transactions under a category and mark category as income or excluding from budget/totals is beneficial here
+* Ability to specify a mapping between Mint <> LunchMoney for accounts
+  * Try to calculate the most accurate balance for each account dependent on transactions
 * Keep account history from Mint for 'active' accounts. You can't push transactions to a Plaid-managed account, but you can create a manually managed account and then merge it. This is the approach that is taken.
 
 ## Usage
@@ -52,21 +54,13 @@ You can use this file to archive specific accounts that are still being reported
 }
 ```
 
-- [ ] Establish account mapping (Mint -> new Lunch Money account)
-- [ ] Allow transactions to be marked as different currency based on account settings
-- [ ] Import all transactions
-- [ ] Net worth data importing
-
-
+### TODO
 This is not complete, but should work for someone who wants to import their Mint transactions quickly.
 
 Some things that would be great to fix:
-- [ ] Cash & Uncategorized accounts are not handled properly
+- [ ] Add ability to specify category groups
+- [ ] Ensure Cash & Uncategorized accounts are handled properly
 - [ ] provide confirmation prompt before importing transactions
 - [ ] input paths are hardcoded, these should be CLI arguments
-- [ ] should create new categories automatically
-- [ ] bring over net worth data from Mint.
-- [ ] if a asset creation API is built, create these two categories automatically for the user
-  - [ ] `Historical Mint Expenses` "Historical expenses from Mint that don't map to an existing account"
-  - [ ] `Historical Mint Hidden Expenses` "Historical expenses from Mint that were hidden"
+- [ ] bring over net worth data from Mint
 - [ ] the import stuff is messy. There's got to be a better linter for this. https://github.com/lydell/eslint-plugin-simple-import-sort
