@@ -17,8 +17,19 @@ type LunchMoneyOutput = {
   categoryGroup: string;
 };
 
+type CategoryGroupOutput = {
+  categoryGroup: string;
+  income: boolean;
+  excludeFromBudget: boolean;
+  excludeFromTotals: boolean;
+}
+
 interface CategoryMapping {
   [mintCategoryName: string]: LunchMoneyOutput;
+}
+
+interface CategoryGroupMapping {
+  [categoryGroupName: string]: CategoryGroupOutput;
 }
 
 export async function generateCategoryMappings(
@@ -31,9 +42,15 @@ export async function generateCategoryMappings(
   }
 
   const lunchMoneyRawCategories = await lunchMoneyClient.getCategories();
-  const lunchMoneyGroupCategories = lunchMoneyRawCategories
+  const lunchMoneyGroupCategories: { [key: string]: any } = lunchMoneyRawCategories
     .filter(c => c.is_group)
-    .map(c => c.name);
+    .map(c => [c.name, {
+      categoryGroup: c.name,
+      income: c.is_income,
+      excludeFromBudget:c.exclude_from_budget,
+      excludeFromTotals: c.exclude_from_totals
+    }]);
+
   const lunchMoneyCategories = lunchMoneyRawCategories
     .filter(c => !c.is_group)
     .map(c => c.name);
@@ -191,9 +208,13 @@ export async function createLunchMoneyCategories(
   }
 
   const categoryMappings: CategoryMapping = readJSONFile(CATEGORY_MAPPING_PATH)["categories"];
-  const categoryGroups: [string] = readJSONFile(CATEGORY_MAPPING_PATH)["categoryGroups"];
+  const categoryGroupMappings: CategoryGroupMapping = readJSONFile(CATEGORY_MAPPING_PATH)["categoryGroups"];
   const rawLunchMoneyCategories = await lunchMoneyClient.getCategories();
 
+  const categoryGroups: string[] = [];
+  for (const categoryGroup in categoryGroupMappings) {
+    categoryGroups.push(categoryGroup);
+  }
   const existingCategoryGroups = rawLunchMoneyCategories
     .filter(c => c.is_group)
     .map(c => c.name);
@@ -207,8 +228,13 @@ export async function createLunchMoneyCategories(
 
   for (const categoryGroupName of categoryGroupsToCreate) {
     console.log(`Trying to create category group ${categoryGroupName}`);
-    const response = await lunchMoneyClient.post("/v1/categories/group", { "name": categoryGroupName });
-    console.log(response);
+    const categoryGroup = categoryGroupMappings[categoryGroupName];
+    const response = await lunchMoneyClient.post("/v1/categories/group", {
+      name: categoryGroup.categoryGroup,
+      is_income: categoryGroup.income || false,
+      exclude_from_budget: categoryGroup.excludeFromBudget || false,
+      exclude_from_totals: categoryGroup.excludeFromTotals || false,
+    });
     categoryGroupIdMapping.set(categoryGroupName, response?.category_id);
   }
 
