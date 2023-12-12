@@ -61,24 +61,12 @@ export async function createLunchMoneyAccounts(
 
 export function updateTransactionsWithAccountMappings(
   transactions: MintTransaction[],
-  accountMappings: Map<string, LunchMoneyAccount>,
-  oldTransactionDate: Date
+  accountMappings: Map<string, LunchMoneyAccount>
 ): MintTransaction[] {
-  const [oldTransactions, recentTransactions] = _.partition(transactions,
-    t => dateFns.isBefore(dateFns.parse(t.Date, "MM/dd/yyyy", new Date()), oldTransactionDate));
-
-  const allInactiveMintAccounts = _.chain(oldTransactions)
-    .map(t => t.AccountName)
-    .compact()
-    .uniq()
-    .value();
-  console.log(`Determined these Mint Accounts to be old and probably should be archived:\n\n ${allInactiveMintAccounts.join("\n")}`);
-  console.log(`Will save these inactive accounts to inactive_accounts.json, feel free to mark it inactive in LunchMoney`);
-
-  const accountsToSkip = ["Uncategorized"];
+  const accountsToFlag = ["Uncategorized"];
 
   for (const transaction of transactions) {
-    if (accountsToSkip.includes(transaction.AccountName)) {
+    if (accountsToFlag.includes(transaction.AccountName)) {
       console.log(`This transaction is uncategorized/cash: ${prettyJSON(transaction)}`);
       // transaction.LunchMoneyAccountName = transaction.AccountName;
     }

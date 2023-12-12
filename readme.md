@@ -58,7 +58,6 @@ You can use this file to archive specific accounts that are still being reported
 This is not complete, but should work for someone who wants to import their Mint transactions quickly.
 
 Some things that would be great to fix:
-- [ ] Add ability to specify category groups
 - [ ] Ensure Cash & Uncategorized accounts are handled properly
 - [ ] provide confirmation prompt before importing transactions
 - [ ] input paths are hardcoded, these should be CLI arguments

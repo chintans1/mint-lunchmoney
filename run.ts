@@ -28,13 +28,11 @@ const getTransactionsWithMappedCategories = async function(
 ) {
   console.log("Read %d transactions", mintTransactions.length);
 
-  const startImportDate = determineStartImportDate();
-
   const accountMappings: Map<string, LunchMoneyAccount> =
       new Map(readJSONFile("./account_mapping.json")?.accounts);
 
   const mintTransactionsWithAccountMappings = updateTransactionsWithAccountMappings(
-    mintTransactions, accountMappings, startImportDate
+    mintTransactions, accountMappings
   );
 
   const mintTransactionsWithTransformedCategories =
@@ -45,24 +43,6 @@ const getTransactionsWithMappedCategories = async function(
     );
 
   return mintTransactionsWithTransformedCategories;
-}
-
-export function determineStartImportDate() {
-  // TODO this should be an input parameter to the script
-  // TODO this isn't really the import date, this is only used to determine when transactions should be treated as old
-  let range = humanInterval("1 year");
-
-  if (!range) {
-    console.log("Invalid date to search for active accounts");
-    process.exit(1);
-  }
-
-  // range is in milliseconds
-  range /= 1000;
-
-  const oneYearAgo = dateFns.subSeconds(new Date(), range);
-
-  return oneYearAgo;
 }
 
 export async function getAndSaveAccountMappings(
