@@ -28,34 +28,32 @@ export async function addLunchMoneyAccountIds(
   return transactions;
 }
 
-export async function createLunchMoneyAccounts(
+export async function validateAllAccountsAreExistent(
   transactions: MintTransaction[],
   lunchMoneyClient: LunchMoney
 ) {
   // Assuming that transactions are already updated to have correct LM Account Name
-  const mintAccountsAfterTransformation = _.chain(transactions)
-    .map((t) => t.LunchMoneyAccountName.normalize("NFKC"))
+  const requiredAccountNames = _.chain(transactions)
+    .map(t => t.LunchMoneyAccountName.normalize("NFKC"))
     .uniq()
     .value();
 
   // assets is only non-plaid assets
-  const manualLmAssets = await lunchMoneyClient.getAssets();
-  const existingAccountNames = manualLmAssets.map((r) =>
-    (r.display_name || r.name).normalize("NFKC")
-  );
-
+  const existingAccountNames = (await lunchMoneyClient.getAssets())
+    .map(r => (r.display_name || r.name).normalize("NFKC"));
   // there's a 'cash transaction' account in all LM accounts
   existingAccountNames.push("Cash");
 
   const accountsToCreate = _.difference(
-    mintAccountsAfterTransformation,
+    requiredAccountNames,
     existingAccountNames
   );
 
-  accountsToCreate.forEach(account => {
-    console.log(`Trying to create account ${account}`);
-    // TODO
-  });
+  if (accountsToCreate.length > 0) {
+    console.log("There are still accounts to be made, please ensure all accounts are mapped and created.")
+    console.log(`Accounts to create:\n\n${accountsToCreate.join("\n")}`);
+    process.exit(1);
+  }
 }
 
 export function updateTransactionsWithAccountMappings(
@@ -67,13 +65,26 @@ export function updateTransactionsWithAccountMappings(
   for (const transaction of transactions) {
     if (accountsToFlag.includes(transaction.AccountName)) {
       console.log(`This transaction is uncategorized/cash: ${prettyJSON(transaction)}`);
-      // transaction.LunchMoneyAccountName = transaction.AccountName;
     }
 
     transaction.Notes += `\n\n Original Mint account: ${transaction.AccountName}`;
-    transaction.LunchMoneyAccountName = `${accountMappings.get(transaction.AccountName)?.name || "Could not find mapping"}`;
-    transaction.LunchMoneyCurrency = accountMappings.get(transaction.AccountName)?.currency.toLowerCase() || "usd";
+    transaction.LunchMoneyAccountName = `${accountMappings.get(transaction.AccountName)!.name}`;
+    transaction.LunchMoneyCurrency = accountMappings.get(transaction.AccountName)!.currency.toLowerCase();
   }
 
   return transactions;
+}
+
+export function createAccount(
+  mintAccountName: string,
+  lmAccount: LunchMoneyAccount,
+  lunchMoney: LunchMoney) {
+  console.log(`Trying to create account ${lmAccount.name} for mint account ${mintAccountName}`);
+  return lunchMoney.post("/v1/assets", {
+    "name": lmAccount.name,
+    "type_name": lmAccount.type,
+    "balance": lmAccount.balance,
+    "currency": lmAccount.currency.toLowerCase(),
+    "institution_name": lmAccount.institutionName
+  });
 }

@@ -11,7 +11,8 @@ import {
 import {
   updateTransactionsWithAccountMappings,
   addLunchMoneyAccountIds,
-  createLunchMoneyAccounts,
+  validateAllAccountsAreExistent,
+  createAccount
 } from "./accounts.js";
 import { applyStandardTransformations } from "./transformations.js";
 import dotenv from "dotenv";
@@ -89,20 +90,6 @@ export async function getAndSaveAccountMappings(
   return accountMappings;
 }
 
-export function createAccount(
-  mintAccountName: string,
-  lmAccount: LunchMoneyAccount,
-  lunchMoney: LunchMoney
-) {
-    console.log(`Trying to create account ${lmAccount.name} for mint account ${mintAccountName}`);
-    return lunchMoney.post("/v1/assets", {
-      "name": lmAccount.name,
-      "type_name": lmAccount.type,
-      "balance": lmAccount.balance,
-      "currency": lmAccount.currency.toLowerCase(),
-      "institution_name": lmAccount.institutionName
-    });
-}
 
 (async () => {
   dotenv.config();
@@ -149,7 +136,7 @@ export function createAccount(
     lunchMoney
   );
 
-  await createLunchMoneyAccounts(
+  await validateAllAccountsAreExistent(
     mintTransactionsWithTransformedCategories,
     lunchMoney
   );
