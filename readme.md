@@ -58,8 +58,8 @@ You can use this file to archive specific accounts that are still being reported
 This is not complete, but should work for someone who wants to import their Mint transactions quickly.
 
 Some things that would be great to fix:
+- [ ] Clean up code and update README
 - [ ] Ensure Cash & Uncategorized accounts are handled properly
-- [ ] provide confirmation prompt before importing transactions
-- [ ] input paths are hardcoded, these should be CLI arguments
+- [ ] input paths are hardcoded, these should be CLI arguments (i don't think so)
 - [ ] bring over net worth data from Mint
 - [ ] the import stuff is messy. There's got to be a better linter for this. https://github.com/lydell/eslint-plugin-simple-import-sort

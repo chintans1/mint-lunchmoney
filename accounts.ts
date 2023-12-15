@@ -1,5 +1,4 @@
 import _ from "underscore";
-import dateFns from "date-fns";
 import { LunchMoney } from "lunch-money";
 import { prettyJSON } from "./util.js";
 import { MintTransaction } from "./models/mintTransaction.js";

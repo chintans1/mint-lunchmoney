@@ -1,5 +1,7 @@
 import { prettyJSON, readJSONFile, parseBoolean } from "./util.js";
 import { MintTransaction } from "./models/mintTransaction.js";
+import { CategoryGroupMapping } from "./models/categoryGroupMapping.js";
+import { CategoryMapping } from "./models/categoryMapping.js";
 import stringSimilarity from "string-similarity";
 import { LunchMoney } from "lunch-money";
 import _ from "underscore";
@@ -8,28 +10,12 @@ import promptSync from "prompt-sync";
 
 export const CATEGORY_MAPPING_PATH: string = "./category_mapping.json";
 
-type LunchMoneyOutput = {
-  category: string;
-  tags?: string[];
-  income: boolean;
-  excludeFromBudget: boolean;
-  excludeFromTotals: boolean;
-  categoryGroup: string;
-};
-
-type CategoryGroupOutput = {
-  categoryGroup: string;
-  income: boolean;
-  excludeFromBudget: boolean;
-  excludeFromTotals: boolean;
+interface CategoryMappings {
+  [mintCategoryName: string]: CategoryMapping;
 }
 
-interface CategoryMapping {
-  [mintCategoryName: string]: LunchMoneyOutput;
-}
-
-interface CategoryGroupMapping {
-  [categoryGroupName: string]: CategoryGroupOutput;
+interface CategoryGroupMappings {
+  [categoryGroupName: string]: CategoryGroupMapping;
 }
 
 export async function generateCategoryMappings(
@@ -142,7 +128,7 @@ export async function transformAccountCategories(
     .value();
 
 
-  const userCategoryMapping: CategoryMapping =
+  const userCategoryMapping: CategoryMappings =
     readJSONFile(categoryMappingPath)?.categories || {};
 
   if (!_.isEmpty(userCategoryMapping)) {
@@ -207,8 +193,8 @@ export async function createLunchMoneyCategories(
     process.exit(1);
   }
 
-  const categoryMappings: CategoryMapping = readJSONFile(CATEGORY_MAPPING_PATH)["categories"];
-  const categoryGroupMappings: CategoryGroupMapping = readJSONFile(CATEGORY_MAPPING_PATH)["categoryGroups"];
+  const categoryMappings: CategoryMappings = readJSONFile(CATEGORY_MAPPING_PATH)["categories"];
+  const categoryGroupMappings: CategoryGroupMappings = readJSONFile(CATEGORY_MAPPING_PATH)["categoryGroups"];
   const rawLunchMoneyCategories = await lunchMoneyClient.getCategories();
 
   const categoryGroups: string[] = [];
@@ -288,7 +274,7 @@ export async function createLunchMoneyCategories(
 
 const updateMintTransactionsWithOldNewCategoryInfo = function(
   mintTransactions: MintTransaction[],
-  userCategoryMappings: CategoryMapping
+  userCategoryMappings: CategoryMappings
 ) {
   return mintTransactions.map(ogTransaction => {
     const transaction = Object.assign(ogTransaction);

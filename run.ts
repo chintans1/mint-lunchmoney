@@ -15,8 +15,6 @@ import {
 } from "./accounts.js";
 import { applyStandardTransformations } from "./transformations.js";
 import dotenv from "dotenv";
-import humanInterval from "human-interval";
-import dateFns from "date-fns";
 import { MintTransaction } from "./models/mintTransaction.js";
 import { LunchMoneyAccount } from "./models/lunchMoneyAccount.js";
 import fs from "fs";
