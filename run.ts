@@ -29,7 +29,7 @@ async function getTransactionsWithMappedCategories(
   lunchMoneyClient: LunchMoney
 ) {
   const accountMappings: Map<string, LunchMoneyAccount> =
-      new Map(readJSONFile("./account_mapping.json")?.accounts);
+      new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
 
   const mintTransactionsWithAccountMappings = updateTransactionsWithAccountMappings(
     mintTransactions, accountMappings
@@ -39,7 +39,7 @@ async function getTransactionsWithMappedCategories(
     await transformAccountCategories(
       mintTransactionsWithAccountMappings,
       lunchMoneyClient,
-      "./category_mapping.json"
+      CATEGORY_MAPPING_PATH
     );
 
   return mintTransactionsWithTransformedCategories;

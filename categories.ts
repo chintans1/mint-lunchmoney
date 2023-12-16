@@ -88,26 +88,27 @@ export async function generateCategoryMappings(
     .reduce((acc: Object, curr: Object) => _.extend(acc, curr), {})
     .value();
 
-  if (!_.isEmpty(categoriesToMap)) {
-    console.log(
-      `A ${CATEGORY_MAPPING_PATH} has been created to map ${
-        _.keys(categoriesToMap).length
-      } mint categories to lunch money:\n`
-    );
-
-    fs.writeFileSync(
-      CATEGORY_MAPPING_PATH,
-      prettyJSON({
-        categories: categoriesToMap,
-        lunchMoneyOptions: lunchMoneyCategories,
-        categoryGroups: lunchMoneyGroupCategories
-      }),
-      "utf8"
-    );
-  } else {
+  if (_.isEmpty(categoriesToMap)) {
     console.log(`No categories were found to map`);
+    process.exit(0);
   }
-  process.exit(1);
+
+  console.log(
+    `A ${CATEGORY_MAPPING_PATH} has been created to map ${
+      _.keys(categoriesToMap).length
+    } mint categories to lunch money:\n`
+  );
+
+  fs.writeFileSync(
+    CATEGORY_MAPPING_PATH,
+    prettyJSON({
+      categories: categoriesToMap,
+      lunchMoneyOptions: lunchMoneyCategories,
+      categoryGroups: lunchMoneyGroupCategories
+    }),
+    "utf8"
+  );
+  process.exit(0);
 }
 
 // Updates all transactions to store the best possible LM category
@@ -134,7 +135,7 @@ export async function transformAccountCategories(
   if (!_.isEmpty(userCategoryMapping)) {
     console.log(`User provided category mapping discovered`);
   } else {
-    console.log(`User has no category mappings available, exiting...`);
+    console.log(`User has no category mappings available, please create. Now exiting...`);
     process.exit(1)
   }
 
