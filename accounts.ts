@@ -1,8 +1,66 @@
 import _ from "underscore";
 import { LunchMoney } from "lunch-money";
-import { prettyJSON } from "./util.js";
+import { prettyJSON, readJSONFile } from "./util.js";
 import { MintTransaction } from "./models/mintTransaction.js";
 import { LunchMoneyAccount } from "./models/lunchMoneyAccount.js";
+import fs from "fs";
+
+export const ACCOUNT_MAPPING_PATH: string = "./account_mapping.json";
+
+export async function generateAccountMappings(
+  mintTransactions: MintTransaction[]
+) {
+  // Look at all transactions to fetch the account
+  // Now you can map mint account name -> possible LM account
+  // Possible LM account = {name, institution name, type, currency, balance}
+  const accountMappings = new Map<string, LunchMoneyAccount>();
+
+  console.log(`Found ${new Set(mintTransactions.map(transaction => transaction.AccountName)).size} unique accounts`);
+
+  if (fs.existsSync(ACCOUNT_MAPPING_PATH)) {
+    console.log("Found existing account mapping file, will try to update only what is required");
+    const existingAccountMapping: Map<string, LunchMoneyAccount> = new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
+    for (const [key, value] of existingAccountMapping) {
+      accountMappings.set(key, value);
+    }
+  }
+
+  [...new Set(mintTransactions.map(transaction => transaction.AccountName))]
+    .forEach(accountName => {
+      if (!accountMappings.has(accountName)) {
+        accountMappings.set(accountName, {
+          name: accountName,
+          type: "cash",
+          balance: 0.00,
+          institutionName: "InstitutionName",
+          currency: "USD"
+        })
+      }
+    });
+
+  // Go through transactions again and update the balance
+  mintTransactions.forEach(transaction => {
+    const amount = parseFloat(transaction.Amount);
+    if (accountMappings.has(transaction.AccountName)) {
+      const lmAccount: LunchMoneyAccount = accountMappings.get(transaction.AccountName)!;
+      lmAccount.balance = transaction.TransactionType === "credit" ? lmAccount.balance + amount : lmAccount.balance - amount;
+    }
+  });
+
+  console.log(
+    `A ${ACCOUNT_MAPPING_PATH} has been created to map ${
+      accountMappings.size
+    } accounts to lunch money:\n`
+  );
+
+  fs.writeFileSync(
+    ACCOUNT_MAPPING_PATH,
+    prettyJSON({
+      accounts: [...accountMappings],
+    }),
+    "utf8"
+  );
+}
 
 export async function addLunchMoneyAccountIds(
   transactions: MintTransaction[],

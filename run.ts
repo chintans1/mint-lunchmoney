@@ -1,14 +1,17 @@
 // github:lunch-money/lunch-money-js
 
 import { LunchMoney, DraftTransaction } from "lunch-money";
-import { prettyJSON, readCSV, writeCSV, readJSONFile, parseBoolean } from "./util.js";
+import { readCSV, writeCSV, readJSONFile, parseBoolean } from "./util.js";
 import {
+  CATEGORY_MAPPING_PATH,
   transformAccountCategories,
   addLunchMoneyCategoryIds,
   createLunchMoneyCategories,
   generateCategoryMappings
 } from "./categories.js";
 import {
+  ACCOUNT_MAPPING_PATH,
+  generateAccountMappings,
   updateTransactionsWithAccountMappings,
   addLunchMoneyAccountIds,
   validateAllAccountsAreExistent,
@@ -21,12 +24,10 @@ import { LunchMoneyAccount } from "./models/lunchMoneyAccount.js";
 import fs from "fs";
 import PromptSync from "prompt-sync";
 
-const getTransactionsWithMappedCategories = async function(
+async function getTransactionsWithMappedCategories(
   mintTransactions: MintTransaction[],
   lunchMoneyClient: LunchMoney
 ) {
-  console.log("Read %d transactions", mintTransactions.length);
-
   const accountMappings: Map<string, LunchMoneyAccount> =
       new Map(readJSONFile("./account_mapping.json")?.accounts);
 
@@ -44,53 +45,6 @@ const getTransactionsWithMappedCategories = async function(
   return mintTransactionsWithTransformedCategories;
 }
 
-export async function getAndSaveAccountMappings(
-  mintTransactions: MintTransaction[]
-) {
-  // Look at all transactions to fetch the account
-  // Now you can map mint account name -> possible LM account
-  // Possible LM account = {name, institution name, type, currency, balance}
-  const accountMappings = new Map<string, LunchMoneyAccount>();
-
-  console.log(`Found ${new Set(mintTransactions.map(transaction => transaction.AccountName)).size} unique accounts`);
-
-  [...new Set(mintTransactions.map(transaction => transaction.AccountName))]
-    .forEach(accountName => accountMappings.set(accountName, {
-      name: accountName,
-      type: "cash",
-      balance: 0.00,
-      institutionName: "InstitutionName",
-      currency: "USD"
-    }));
-
-  // Go through transactions again and update the balance
-  mintTransactions.forEach(transaction => {
-    const amount = parseFloat(transaction.Amount);
-    if (accountMappings.has(transaction.AccountName)) {
-      const lmAccount: LunchMoneyAccount = accountMappings.get(transaction.AccountName)!;
-      lmAccount.balance = transaction.TransactionType === "credit" ? lmAccount.balance + amount : lmAccount.balance - amount;
-    }
-  });
-
-  console.log(
-    `A account_mapping_raw.json has been created to map ${
-      accountMappings.size
-    } accounts to lunch money:\n`
-  );
-
-  fs.writeFileSync(
-    "./account_mapping_raw.json",
-    prettyJSON({
-      accounts: [...accountMappings],
-    }),
-    "utf8"
-  );
-
-  console.log("Make sure to update account_mapping_raw.json to account_mapping.json");
-  return accountMappings;
-}
-
-
 (async () => {
   dotenv.config();
 
@@ -102,6 +56,7 @@ export async function getAndSaveAccountMappings(
   const prompt = PromptSync();
 
   const mintTransactions = await readCSV("./data.csv");
+  console.log("Read %d transactions", mintTransactions.length);
 
   if (process.argv[2] === "category-mapping") {
     console.log("Generating category mappings...");
@@ -111,18 +66,25 @@ export async function getAndSaveAccountMappings(
 
   if (process.argv[2] === "account-mapping") {
     console.log("Generating account mappings...");
-    await getAndSaveAccountMappings(mintTransactions);
+    await generateAccountMappings(mintTransactions);
     process.exit(0);
   }
 
   if (process.argv[2] === "create-account") {
     console.log("Creating accounts...");
     const accountMappings: Map<string, LunchMoneyAccount> =
-      new Map(readJSONFile("./account_mapping.json")?.accounts);
+      new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
     for (const [key, value] of accountMappings) {
       await createAccount(key, value, lunchMoney);
     }
     process.exit(0);
+  }
+
+  // Error out if category mapping and/or account mapping isn't present
+  if (!fs.existsSync(ACCOUNT_MAPPING_PATH) || !fs.existsSync(CATEGORY_MAPPING_PATH)) {
+    console.log("Please ensure you've generated category and account mappings already")
+    console.log("You can run 'npm start category-mapping' or 'npm-start account-mapping'");
+    process.exit(1);
   }
 
   // No command line arguments are given
