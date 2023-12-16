@@ -15,6 +15,7 @@ Feel free to open a PR to fix anything or add any new functionality. I am not th
 
 * Ability to specify a category mapping between Mint <> LunchMoney
   * Ability to tag all transactions under a category and mark category as income or excluding from budget/totals is beneficial here
+  * You can also establish your category groupings at this point
 * Ability to specify a mapping between Mint <> LunchMoney for accounts
   * Try to calculate the most accurate balance for each account dependent on transactions
 * Keep account history from Mint for 'active' accounts. You can't push transactions to a Plaid-managed account, but you can create a manually managed account and then merge it. This is the approach that is taken.
@@ -24,7 +25,10 @@ Feel free to open a PR to fix anything or add any new functionality. I am not th
 1. Download all of your mint transactions in a single CSV. Put it in this directory as `data.csv`
 2. Get a lunch money API key. Run `cp .env-example .env` and add your API key to `.env`
 3. `asdf install` and `npm install` to setup node & npm packages
-4. `npm run build`, `npm start` to build and run!
+4. `npm run build` to build
+5. `npm start category-mapping` and `npm start account-mapping` to start
+6. Once your category mapping and account mappings are ready, you can do `npm start create-account` to create all accounts
+7. `npm start` to go through the whole flow and get all transaction data into LunchMoney
 
 You'll probably need to modify the two files below *after* running.
 
@@ -35,8 +39,21 @@ Use this file to map Mint categories to LunchMoney categories. This file will be
 ```json
 {
   "categories": {
-    "MintCategory": "LunchMoneyCategory",
-    "MintCategory2": {"category": "LM Category 2", "tags": ["foo"]}
+    "MintCategory": {
+      "category": "MintCategory",
+      "tags": ["foo"],
+      "excludeFromBudget": false,
+      "excludeFromTotals": false,
+      "categoryGroup": "Category Group Name"
+    }
+  },
+  "categoryGroups": {
+    "Category Group Name": {
+      "categoryGroup": "Category Group Name",
+      "income": false,
+      "excludeFromBudget": true,
+      "excludeFromTotals": true
+    }
   }
 }
 ```
@@ -47,9 +64,17 @@ You can use this file to archive specific accounts that are still being reported
 
 ```json
 {
-  "archive": [
-    "account 1",
-    "account 2"
+  "accounts": [
+    [
+      "Mint Account Name",
+      {
+        "name": "Lunch Money Account Name",
+        "type": "employee compensation" | "cash" | "vehicle" | "loan" | "cryptocurrency" | "investment" | "other" | "credit" | "real estate",
+        "balance": 0,
+        "institutionName": "Bank Name",
+        "currency": "USD"
+      }
+    ]
   ]
 }
 ```
@@ -58,7 +83,6 @@ You can use this file to archive specific accounts that are still being reported
 This is not complete, but should work for someone who wants to import their Mint transactions quickly.
 
 Some things that would be great to fix:
-- [ ] Clean up code and update README
 - [ ] Ensure Cash & Uncategorized accounts are handled properly
 - [ ] input paths are hardcoded, these should be CLI arguments (i don't think so)
 - [ ] bring over net worth data from Mint
