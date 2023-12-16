@@ -58,26 +58,29 @@ async function getTransactionsWithMappedCategories(
   const mintTransactions = await readCSV("./data.csv");
   console.log("Read %d transactions", mintTransactions.length);
 
-  if (process.argv[2] === "category-mapping") {
-    console.log("Generating category mappings...");
-    await generateCategoryMappings(mintTransactions, lunchMoney);
-    process.exit(0);
-  }
+  switch (process.argv[2]) {
+    case "category-mapping":
+      console.log("Generating category mappings...");
+      await generateCategoryMappings(mintTransactions, lunchMoney);
+      process.exit(0);
 
-  if (process.argv[2] === "account-mapping") {
-    console.log("Generating account mappings...");
-    await generateAccountMappings(mintTransactions);
-    process.exit(0);
-  }
+    case "account-mapping":
+      console.log("Generating account mappings...");
+      await generateAccountMappings(mintTransactions);
+      process.exit(0);
 
-  if (process.argv[2] === "create-account") {
-    console.log("Creating accounts...");
-    const accountMappings: Map<string, LunchMoneyAccount> =
-      new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
-    for (const [key, value] of accountMappings) {
-      await createAccount(key, value, lunchMoney);
-    }
-    process.exit(0);
+    case "create-account":
+      console.log("Creating accounts...");
+      const accountMappings: Map<string, LunchMoneyAccount> =
+        new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
+      for (const [key, value] of accountMappings) {
+        await createAccount(key, value, lunchMoney);
+      }
+      process.exit(0);
+
+    default:
+      console.log("No specific option chosen via cmdargs...");
+      break;
   }
 
   // Error out if category mapping and/or account mapping isn't present
