@@ -29,7 +29,7 @@ async function getTransactionsWithMappedCategories(
   lunchMoneyClient: LunchMoney
 ) {
   const accountMappings: Map<string, LunchMoneyAccount> =
-      new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
+    new Map(readJSONFile(ACCOUNT_MAPPING_PATH)?.accounts);
 
   const mintTransactionsWithAccountMappings = updateTransactionsWithAccountMappings(
     mintTransactions, accountMappings
@@ -148,25 +148,25 @@ async function getTransactionsWithMappedCategories(
     );
 
     console.log(
-      `Pushing batch ${i} transactions (${batch.length}) to LunchMoney`
+      `Pushing #${i} batch of (${batch.length}) transactions to LunchMoney`
     );
 
     const formattedTransactions = batch.map(
       (transaction) =>
-        ({
-          payee: transaction.Description,
-          notes: transaction.Notes,
+      ({
+        payee: transaction.Description,
+        notes: transaction.Notes,
 
-          date: transaction.LunchMoneyDate,
-          category_id: transaction.LunchMoneyCategoryId,
-          amount: transaction.LunchMoneyAmount,
-          asset_id: transaction.LunchMoneyAccountId,
-          external_id: transaction.LunchMoneyExtId,
-          tags: transaction.LunchMoneyTags,
+        date: transaction.LunchMoneyDate,
+        category_id: transaction.LunchMoneyCategoryId,
+        amount: transaction.LunchMoneyAmount,
+        asset_id: transaction.LunchMoneyAccountId,
+        external_id: transaction.LunchMoneyExtId,
+        tags: transaction.LunchMoneyTags,
 
-          currency: transaction.LunchMoneyCurrency,
-          status: "cleared",
-        } as DraftTransaction)
+        currency: transaction.LunchMoneyCurrency,
+        status: "cleared",
+      } as DraftTransaction)
     );
 
     const result = await lunchMoney.createTransactions(

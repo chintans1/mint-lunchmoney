@@ -84,6 +84,9 @@ This is not complete, but should work for someone who wants to import their Mint
 
 Some things that would be great to fix:
 - [ ] Ensure Cash & Uncategorized accounts are handled properly
+  - On Mint, you can have Uncategorized transactions. This should either be categorized as Uncategorized again or something else
+  - Got to handle Cash transactions as well, I think they can go into "Cash" account
+  - Hide from Budget & Trends category, I think this should be mapped by consumer too
 - [ ] input paths are hardcoded, these should be CLI arguments (i don't think so)
 - [ ] bring over net worth data from Mint
 - [ ] the import stuff is messy. There's got to be a better linter for this. https://github.com/lydell/eslint-plugin-simple-import-sort
